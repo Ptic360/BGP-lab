@@ -160,7 +160,7 @@ networks:
         f.write(compose_yaml)
 
     # 6. Start the environment
-    print(f"{CYAN}Booting router containers...{RESET}")
+    print(f"{CYAN}Booting router containers... (this may take a while, up to 1-2 minutes){RESET}")
     subprocess.run([engine, "compose", "up", "-d"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     # 7. Print Instructions
@@ -170,7 +170,7 @@ networks:
     print("your edge router (r_student) to meet the policy requirements below.")
     print(f"\nTo configure your router, edit this local file:")
     print(f"{BOLD}{YELLOW}  ./lab_configs/r_student/frr.conf{RESET}")
-    print(f"\nTo test your configuration in real-time, run:")
+    print(f"\nTo test your configuration in real-time, open another terminal and run:")
     print(f"{BOLD}{CYAN}  {engine} exec -it r_student vtysh{RESET}\n")
     
     print(f"{BOLD}Your Assigned Variables:{RESET}")
