@@ -37,6 +37,7 @@ def automate_bgp_lab():
 ip route {student_net} blackhole
 router bgp {student_as}
  bgp router-id 10.1.1.2
+ no bgp ebgp-requires-policy
  neighbor 10.1.1.1 remote-as 64501
  neighbor 10.1.2.1 remote-as 64501
  neighbor 10.2.1.1 remote-as 64502

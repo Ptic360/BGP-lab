@@ -66,6 +66,7 @@ def run_bgp_lab():
     isp_a_conf = f"""!
 router bgp 64501
  bgp router-id 1.1.1.1
+ no bgp ebgp-requires-policy
  neighbor 10.1.1.2 remote-as {student_as}
  neighbor 10.1.2.2 remote-as {student_as}
  !
@@ -83,6 +84,7 @@ interface lo
     isp_b_conf = f"""!
 router bgp 64502
  bgp router-id 2.2.2.2
+ no bgp ebgp-requires-policy
  neighbor 10.2.1.2 remote-as {student_as}
  !
  address-family ipv4 unicast
@@ -240,7 +242,7 @@ networks:
     passed = lp_passed and med_link1_passed and med_link2_passed and prepend_passed
 
     if passed:
-        salt = "BGP_POLICY_LAB"
+        salt = "PA191-BGP_POLICY_LAB"
         token_hash = hashlib.sha256((salt + student_id).encode()).hexdigest()[:12]
         print(f"\n{GREEN}{BOLD}SUCCESS:{RESET} All BGP policies verified!")
         print(f"Submit this token to IS: {BOLD}{student_id}-{token_hash}{RESET}")
