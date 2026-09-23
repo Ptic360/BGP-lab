@@ -100,7 +100,7 @@ interface lo
     with open(os.path.join(configs_dir, "r_student", "frr.conf"), "w") as f:
         f.write("! Type your BGP configuration here\n!\n")
 
-    # 5. Generate Compose File (FIXED: Moved Docker's gateway to .254)
+    # 5. Generate Compose File (moves dockers default gateway to .254 so that we can use .1 addresses for containers)
     compose_yaml = f"""
 services:
   r_student:
@@ -159,7 +159,7 @@ networks:
     with open("compose.yaml", "w") as f:
         f.write(compose_yaml)
 
-    # 6. Start the environment (FIXED: Unmasked startup errors)
+    # 6. Start the environment
     print(f"{CYAN}Booting router containers... (this may take a while, up to 1-2 minutes){RESET}")
     subprocess.run([engine, "compose", "up", "-d"])
 
@@ -259,7 +259,6 @@ networks:
             
     print("\n" + "="*65)
     print(f"{YELLOW}Tearing down environment...{RESET}")
-    # FIXED: Added --remove-orphans and -v to ensure clean teardown, and unmasked errors.
     subprocess.run([engine, "compose", "down", "-v", "--remove-orphans"])
     print("Done.")
 

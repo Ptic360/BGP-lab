@@ -32,7 +32,7 @@ def automate_bgp_lab():
     target_localpref = 100 + int(ef)
     target_med_link2 = 200 + int(ef)
 
-    # 4. Generate the exact FRRouting Configuration
+    # 4. Generate the FRRouting Configuration
     vtysh_commands = f"""configure terminal
 ip route {student_net} blackhole
 router bgp {student_as}
@@ -66,11 +66,11 @@ exit
 write memory
 """
 
-    # 5. Inject configuration directly into the running r_student container
+    # 5. Inject configuration into the running r_student container
     print(f"\nPushing configuration for AS {student_as} to the r_student container...")
     
     try:
-        # We use -i to pass our vtysh_commands string directly into standard input
+        # Use -i to pass vtysh_commands string into standard input
         result = subprocess.run(
             [engine, "exec", "-i", "r_student", "vtysh"],
             input=vtysh_commands,
