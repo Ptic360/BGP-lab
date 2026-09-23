@@ -161,7 +161,7 @@ networks:
 
     # 6. Start the environment
     print(f"{CYAN}Booting router containers... (this may take a while, up to 1-2 minutes){RESET}")
-    subprocess.run([engine, "compose", "up", "-d"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run([engine, "compose", "up", "-d"])
 
     # 7. Print Instructions
     print("\n" + "="*70)
@@ -266,7 +266,7 @@ networks:
             
     print("\n" + "="*65)
     print(f"{YELLOW}Tearing down environment...{RESET}")
-    subprocess.run([engine, "compose", "down"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run([engine, "compose", "down", "-v", "--remove-orphans"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     print("Done.")
 
 if __name__ == '__main__':
