@@ -57,20 +57,17 @@ def run_bgp_lab():
 
     for router in ["r_student", "isp_a", "isp_b"]:
         os.makedirs(os.path.join(configs_dir, router), exist_ok=True)
-        # Enable BGP daemon for all routers
         with open(os.path.join(configs_dir, router, "daemons"), "w") as f:
             f.write("bgpd=yes\nzebra=yes\n")
         with open(os.path.join(configs_dir, router, "vtysh.conf"), "w") as f:
             f.write("service integrated-vtysh-config\n")
 
-    # Generate ISP_A Config (Primary - AS 64501)
+    # Generate ISP_A Config
     isp_a_conf = f"""!
 router bgp 64501
  bgp router-id 1.1.1.1
  neighbor 10.1.1.2 remote-as {student_as}
- neighbor 10.1.1.2 description R_STUDENT_LINK1
  neighbor 10.1.2.2 remote-as {student_as}
- neighbor 10.1.2.2 description R_STUDENT_LINK2
  !
  address-family ipv4 unicast
   network 200.200.200.0/24
@@ -82,12 +79,11 @@ interface lo
     with open(os.path.join(configs_dir, "isp_a", "frr.conf"), "w") as f:
         f.write(isp_a_conf)
 
-    # Generate ISP_B Config (Backup - AS 64502)
+    # Generate ISP_B Config
     isp_b_conf = f"""!
 router bgp 64502
  bgp router-id 2.2.2.2
  neighbor 10.2.1.2 remote-as {student_as}
- neighbor 10.2.1.2 description R_STUDENT_LINK3
  !
  address-family ipv4 unicast
   network 200.200.200.0/24
@@ -99,11 +95,10 @@ interface lo
     with open(os.path.join(configs_dir, "isp_b", "frr.conf"), "w") as f:
         f.write(isp_b_conf)
 
-    # Generate empty R_Student Config (Student must write this)
     with open(os.path.join(configs_dir, "r_student", "frr.conf"), "w") as f:
         f.write("! Type your BGP configuration here\n!\n")
 
-    # 5. Generate Compose File
+    # 5. Generate Compose File (FIXED: Moved Docker's gateway to .254)
     compose_yaml = f"""
 services:
   r_student:
@@ -146,20 +141,23 @@ networks:
   link1:
     ipam:
       config:
-        - subnet: 10.1.1.0/29
+        - subnet: 10.1.1.0/24
+          gateway: 10.1.1.254
   link2:
     ipam:
       config:
-        - subnet: 10.1.2.0/29
+        - subnet: 10.1.2.0/24
+          gateway: 10.1.2.254
   link3:
     ipam:
       config:
-        - subnet: 10.2.1.0/29
+        - subnet: 10.2.1.0/24
+          gateway: 10.2.1.254
 """
     with open("compose.yaml", "w") as f:
         f.write(compose_yaml)
 
-    # 6. Start the environment
+    # 6. Start the environment (FIXED: Unmasked startup errors)
     print(f"{CYAN}Booting router containers... (this may take a while, up to 1-2 minutes){RESET}")
     subprocess.run([engine, "compose", "up", "-d"])
 
@@ -208,24 +206,20 @@ networks:
         except json.JSONDecodeError:
             return None
 
-    # Init validation flags
     lp_passed = False
     med_link1_passed = False
     med_link2_passed = False
     prepend_passed = False
 
-    # Check 1: Local Preference (from R_Student)
     r_student_routes = get_bgp_json("r_student", "200.200.200.0/24")
     if r_student_routes and "paths" in r_student_routes:
         for path in r_student_routes["paths"]:
             if path.get("bestpath", {}).get("overall", False):
-                # Verify best path is via ISP_A
                 nexthops = [nh.get("ip") for nh in path.get("nexthops", [])]
                 if ("10.1.1.1" in nexthops or "10.1.2.1" in nexthops):
                     if path.get("locPrf") == target_localpref:
                         lp_passed = True
 
-    # Check 2: MED Check (from ISP_A)
     isp_a_routes = get_bgp_json("isp_a", student_net)
     if isp_a_routes and "paths" in isp_a_routes:
         for path in isp_a_routes["paths"]:
@@ -236,16 +230,13 @@ networks:
             if "10.1.2.2" in nh_ips and metric == target_med_link2:
                 med_link2_passed = True
 
-    # Check 3: AS-Path Prepending (from ISP_B)
     isp_b_routes = get_bgp_json("isp_b", student_net)
     if isp_b_routes and "paths" in isp_b_routes:
         for path in isp_b_routes["paths"]:
             aspath = path.get("aspath", {}).get("string", "")
-            # Prepending 3 times + the original origination = 4 occurrences of the AS
             if aspath.count(str(student_as)) >= 4:
                 prepend_passed = True
 
-    # Final verdict
     passed = lp_passed and med_link1_passed and med_link2_passed and prepend_passed
 
     if passed:
@@ -266,7 +257,8 @@ networks:
             
     print("\n" + "="*65)
     print(f"{YELLOW}Tearing down environment...{RESET}")
-    subprocess.run([engine, "compose", "down", "-v", "--remove-orphans"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    # FIXED: Added --remove-orphans and -v to ensure clean teardown, and unmasked errors.
+    subprocess.run([engine, "compose", "down", "-v", "--remove-orphans"])
     print("Done.")
 
 if __name__ == '__main__':
@@ -274,5 +266,5 @@ if __name__ == '__main__':
         run_bgp_lab()
     except KeyboardInterrupt:
         print(f"\n{RED}Interrupt received. Tearing down environment...{RESET}")
-        shutil.which("podman") and subprocess.run(["podman", "compose", "down"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        shutil.which("docker") and subprocess.run(["docker", "compose", "down"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        shutil.which("podman") and subprocess.run(["podman", "compose", "down", "-v", "--remove-orphans"])
+        shutil.which("docker") and subprocess.run(["docker", "compose", "down", "-v", "--remove-orphans"])
