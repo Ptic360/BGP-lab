@@ -78,10 +78,10 @@ write memory
         )
         
         if result.returncode == 0:
-            print("\n✅ Configuration applied successfully!")
+            print("\nConfiguration applied successfully!")
             print("Switch back to the terminal running the main lab and press [ENTER] to run the autograder.")
         else:
-            print(f"\n❌ Failed to apply configuration. Error output:\n{result.stderr}")
+            print(f"\nFailed to apply configuration. Error output:\n{result.stderr}")
             
     except Exception as e:
         print(f"An error occurred while trying to communicate with the container: {e}")
