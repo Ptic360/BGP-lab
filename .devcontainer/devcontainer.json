@@ -1,6 +1,12 @@
 {
-  "name": "Advanced Routing BGP Lab",
+  "name": "BGP Lab",
   "image": "mcr.microsoft.com/devcontainers/base:ubuntu-22.04",
+  "runArgs": [
+    "--privileged",
+    "--cap-add=NET_ADMIN",
+    "--cap-add=NET_RAW",
+    "--device=/dev/net/tun"
+  ],
   "features": {
     "ghcr.io/devcontainers/features/python:1": {
       "version": "latest"
@@ -10,7 +16,7 @@
       "moby": false
     }
   },
-  "postCreateCommand": "sudo add-apt-repository ppa:katharaframework/kathara -y && sudo apt-get update && sudo apt-get install -y kathara",
+  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y software-properties-common && sudo add-apt-repository ppa:katharaframework/kathara -y && sudo apt-get update && sudo apt-get install -y kathara",
   "customizations": {
     "vscode": {
       "settings": {
