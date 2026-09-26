@@ -1,13 +1,16 @@
 {
   "name": "Advanced Routing BGP Lab",
-  "image": "mcr.microsoft.com/devcontainers/python:3",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-22.04",
   "features": {
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "latest"
+    },
     "ghcr.io/devcontainers/features/docker-in-docker:2": {
       "version": "latest",
-      "moby": true
+      "moby": false
     }
   },
-  "postCreateCommand": "pip install --user kathara",
+  "postCreateCommand": "sudo add-apt-repository ppa:katharaframework/kathara -y && sudo apt-get update && sudo apt-get install -y kathara",
   "customizations": {
     "vscode": {
       "settings": {
