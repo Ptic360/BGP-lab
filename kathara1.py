@@ -23,21 +23,34 @@ def run_bgp_lab():
     print(f" {CYAN}{BOLD}        Advanced Routing Lab: BGP Policy & Path Manipulation{RESET}")
     print("="*65)
 
-    # Safely resolve the Kathará executable on any OS (.exe, .bat, or linux binary)
-    kathara_bin = shutil.which("kathara")
-    if not kathara_bin:
-        print(f"{RED}Error: Kathará is not installed or not in PATH.{RESET}")
-        print("Install from: https://github.com/KatharaFramework/Kathara/releases")
+    # 1. Safely resolve the Kathará executable on any OS or pip environment
+    if shutil.which("kathara"):
+        kathara_cmd = ["kathara"]
+        cli_alias = "kathara"
+    elif shutil.which("Kathara"):
+        kathara_cmd = ["Kathara"]
+        cli_alias = "Kathara"
+    else:
+        # Fallback for Linux PIP virtual environments (where the bin wrapper may be missing)
+        kathara_cmd = [sys.executable, "-m", "kathara"]
+        cli_alias = "python3 -m kathara"
+
+    # Verify Kathará is actually callable
+    try:
+        subprocess.run(kathara_cmd + ["-v"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+    except Exception:
+        print(f"{RED}Error: Kathará is not installed or not working properly.{RESET}")
+        print("Please ensure it is installed correctly: pip install kathara")
         return
 
-    # 1. Get Student ID
+    # 2. Get Student ID
     while True:
         student_id = input("Enter your 6-digit Student ID: ").strip()
         if len(student_id) == 6 and student_id.isdigit():
             break
         print(f"{RED}Invalid format. Must be exactly 6 digits.{RESET}")
 
-    # 2. Derive unique network parameters from ID
+    # 3. Derive unique network parameters from ID
     ab, cd, ef = student_id[0:2], student_id[2:4], student_id[4:6]
     student_as = 65000 + int(ef)
     student_net = f"10.{ab}.{cd}.0/24"
@@ -46,7 +59,7 @@ def run_bgp_lab():
 
     print(f"\n{YELLOW}Generating Kathará environment based on ID: {student_id}{RESET}")
     
-    # 3. Generate Kathará Lab Directory
+    # 4. Generate Kathará Lab Directory
     lab_dir = os.path.join(os.getcwd(), "bgp_policy_lab")
     if os.path.exists(lab_dir):
         shutil.rmtree(lab_dir)
@@ -54,12 +67,10 @@ def run_bgp_lab():
 
     # Helper to write files with forced Unix line endings (\n) and correct OS paths
     def write_file(linux_path, content):
-        # Convert "isp_a/etc/frr/daemons" into OS-safe path (e.g. "isp_a\etc\frr\daemons" on Win)
         safe_path_parts = linux_path.split('/')
         full_path = os.path.join(lab_dir, *safe_path_parts)
         os.makedirs(os.path.dirname(full_path), exist_ok=True)
         
-        # newline='\n' is CRITICAL for Windows so containers don't choke on \r\n
         with open(full_path, "w", newline='\n', encoding="utf-8") as f:
             f.write(content)
 
@@ -133,17 +144,18 @@ chown -R frr:frr /etc/frr
     write_file("r_student/etc/frr/vtysh.conf", "service integrated-vtysh-config\n")
     write_file("r_student/etc/frr/frr.conf", "! Type your BGP configuration here\n!\n")
 
-    # 4. Start the environment
+    # 5. Start the environment
     print(f"{CYAN}Booting Kathará network scenario... (this may take a few moments){RESET}")
-    subprocess.run([kathara_bin, "lstart", "--noterminals", "-d", lab_dir])
+    subprocess.run(kathara_cmd + ["lstart", "--noterminals", "-d", lab_dir])
 
-    # 5. Print Instructions
+    # 6. Print Instructions
     print("\n" + "="*70)
     print(f"{BOLD}LAB INSTRUCTIONS:{RESET}")
     print("You are the administrator of a new multi-homed AS. You must configure ")
     print("your edge router (r_student) to meet the policy requirements below.")
-    print(f"\nTo configure your router, open a new terminal and run:")
-    print(f"{BOLD}{CYAN}  kathara connect -d bgp_policy_lab r_student{RESET}")
+    print(f"\nTo configure your router, open a new terminal, ensure your virtual")
+    print(f"environment is activated, and run:")
+    print(f"{BOLD}{CYAN}  {cli_alias} connect -d bgp_policy_lab r_student{RESET}")
     print(f"Then type {BOLD}vtysh{RESET} to begin configuring.\n")
     
     print(f"{BOLD}Your Assigned Variables:{RESET}")
@@ -155,6 +167,8 @@ chown -R frr:frr /etc/frr
     print(f"    - ISP_A (AS 64501) via Link 1 (10.1.1.1) and Link 2 (10.1.2.1)")
     print(f"    - ISP_B (AS 64502) via Link 3 (10.2.1.1)")
     print(f" 2. {BOLD}Origination:{RESET} Advertise {student_net} to all neighbors.")
+    print(f"    {CYAN}*Hint: BGP will not advertise a network unless it exists in the routing table.{RESET}")
+    print(f"    {CYAN}You must first create a static blackhole route (ip route {student_net} Null0){RESET}")
     print(f" 3. {BOLD}Local Pref:{RESET} Force ALL outbound traffic for the internet")
     print(f"    (200.200.200.0/24) to go through ISP_A by setting a Local Preference")
     print(f"    of exactly {YELLOW}{target_localpref}{RESET} for routes received from ISP_A.")
@@ -166,7 +180,7 @@ chown -R frr:frr /etc/frr
     print("="*70 + "\n")
     input(f"{BOLD}Press [ENTER] when you are finished to grade the lab...{RESET}")
 
-    # 6. Autograder Execution
+    # 7. Autograder Execution
     print("\n" + "="*65)
     print(f" {YELLOW}{BOLD}                  AUTOGRADER{RESET}")
     print("="*65)
@@ -174,7 +188,7 @@ chown -R frr:frr /etc/frr
     time.sleep(5)
 
     def get_bgp_json(container, prefix):
-        cmd = [kathara_bin, "exec", "-d", lab_dir, container, "--", "vtysh", "-c", f"show ip bgp {prefix} json"]
+        cmd = kathara_cmd + ["exec", "-d", lab_dir, container, "--", "vtysh", "-c", f"show ip bgp {prefix} json"]
         result = subprocess.run(cmd, capture_output=True, text=True)
         try:
             return json.loads(result.stdout)
@@ -225,7 +239,7 @@ chown -R frr:frr /etc/frr
             
     print("\n" + "="*65)
     print(f"{YELLOW}Tearing down environment...{RESET}")
-    subprocess.run([kathara_bin, "lclean", "-d", lab_dir])
+    subprocess.run(kathara_cmd + ["lclean", "-d", lab_dir])
     print("Done.")
 
 if __name__ == '__main__':
@@ -234,6 +248,7 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         print("\n\033[91mInterrupt received. Tearing down environment...\033[0m")
         lab_dir = os.path.join(os.getcwd(), "bgp_policy_lab")
-        kathara_bin = shutil.which("kathara")
-        if kathara_bin:
-            subprocess.run([kathara_bin, "lclean", "-d", lab_dir])
+        
+        # Determine fallback command cleanly for interrupt handler
+        k_cmd = ["kathara"] if shutil.which("kathara") else (["Kathara"] if shutil.which("Kathara") else [sys.executable, "-m", "kathara"])
+        subprocess.run(k_cmd + ["lclean", "-d", lab_dir])
