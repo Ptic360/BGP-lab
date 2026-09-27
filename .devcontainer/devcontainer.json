@@ -9,19 +9,25 @@
   ],
   "features": {
     "ghcr.io/devcontainers/features/python:1": {
-      "version": "latest"
+      "version": "3.12"
     },
     "ghcr.io/devcontainers/features/docker-in-docker:2": {
       "version": "latest",
-      "moby": false
+      "moby": true,
+      "dockerDashComposeVersion": "v2"
     }
   },
   "postCreateCommand": "sudo apt-get update && sudo apt-get install -y software-properties-common && sudo add-apt-repository ppa:katharaframework/kathara -y && sudo apt-get update && sudo apt-get install -y kathara",
   "customizations": {
     "vscode": {
       "settings": {
-        "terminal.integrated.defaultProfile.linux": "bash"
-      }
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "docker.dockerPath": "/usr/bin/docker"
+      },
+      "extensions": [
+        "ms-azuretools.vscode-docker",
+        "ms-python.python"
+      ]
     }
   }
 }
